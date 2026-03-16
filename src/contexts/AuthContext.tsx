@@ -51,22 +51,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentRole, setCurrentRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user profile and organizations
   async function loadUserData(userId: string) {
     try {
-      // Load profile
-      const { data: profileData } = await supabase
+      // Load profile — non-blocking
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (profileData) {
+      if (profileError) {
+        console.warn('Could not load profile:', profileError.message);
+      } else if (profileData) {
         setProfile(profileData as UserProfile);
       }
 
-      // Load organizations
-      const { data: memberships } = await supabase
+      // Load organizations — non-blocking
+      const { data: memberships, error: memberError } = await supabase
         .from('organization_members')
         .select(`
           organization_id,
@@ -77,6 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         `)
         .eq('user_id', userId);
 
+      if (memberError) {
+        console.warn('Could not load organizations:', memberError.message);
+        return; // Don't block — user can still use the app
+      }
+
       if (memberships && memberships.length > 0) {
         const orgs = memberships.map((m: any) => ({
           organization_id: m.organization_id,
@@ -85,36 +91,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }));
         setOrganizations(orgs);
 
-        // Restore saved org or use first
         const savedOrgId = localStorage.getItem('growthOS_current_org');
         const savedOrg = orgs.find((o: any) => o.organization_id === savedOrgId);
         const activeOrg = savedOrg || orgs[0];
 
-        setCurrentOrg(activeOrg.organization);
-        setCurrentRole(activeOrg.role);
-        localStorage.setItem('growthOS_current_org', activeOrg.organization_id);
+        if (activeOrg?.organization) {
+          setCurrentOrg(activeOrg.organization);
+          setCurrentRole(activeOrg.role);
+          localStorage.setItem('growthOS_current_org', activeOrg.organization_id);
+        }
       }
     } catch (err) {
       console.error('Error loading user data:', err);
+      // Never block the app — loading will be set to false regardless
     }
   }
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        loadUserData(s.user.id);
-      }
-      setLoading(false);
-    });
+    let mounted = true;
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
+    async function init() {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
         setSession(s);
         setUser(s?.user ?? null);
+
+        if (s?.user) {
+          await loadUserData(s.user.id);
+        }
+      } catch (err) {
+        console.error('Auth init error:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, s) => {
+        if (!mounted) return;
+
+        setSession(s);
+        setUser(s?.user ?? null);
+
         if (s?.user) {
           await loadUserData(s.user.id);
         } else {
@@ -123,11 +146,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setCurrentOrg(null);
           setCurrentRole(null);
         }
-        setLoading(false);
+
+        if (mounted) setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function signIn(email: string, password: string) {
@@ -136,50 +163,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string, name: string, orgName: string) {
-    // 1. Create user
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { full_name: name },
-      },
+      options: { data: { full_name: name } },
     });
 
     if (error || !data.user) return { error: error as Error | null };
 
-    // 2. Create organization
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({ name: orgName })
-      .select()
-      .single();
+    // Create organization — use try/catch to not block signup
+    try {
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .insert({ name: orgName } as any)
+        .select()
+        .single();
 
-    if (orgError || !org) return { error: orgError as Error | null };
+      if (orgError || !org) {
+        console.error('Failed to create org:', orgError);
+        return { error: null }; // User created, org failed — they can retry
+      }
 
-    // 3. Add user as owner
-    const { error: memberError } = await supabase
-      .from('organization_members')
-      .insert({
-        organization_id: org.id,
-        user_id: data.user.id,
-        role: 'owner',
-        accepted_at: new Date().toISOString(),
-      });
+      await supabase
+        .from('organization_members')
+        .insert({
+          organization_id: org.id,
+          user_id: data.user.id,
+          role: 'owner',
+          accepted_at: new Date().toISOString(),
+        } as any);
 
-    if (memberError) return { error: memberError as Error | null };
-
-    // 4. Create AI settings for org
-    await supabase
-      .from('ai_settings')
-      .insert({ organization_id: org.id });
-
-    // 5. Create Utmify config for org
-    await supabase
-      .from('utmify_config')
-      .insert({
+      // Non-critical: AI settings and Utmify config
+      await supabase.from('ai_settings').insert({ organization_id: org.id } as any).catch(() => {});
+      await supabase.from('utmify_config').insert({
         organization_id: org.id,
         webhook_url_generated: `${window.location.origin}/api/utmify/webhook?org=${org.id}`,
-      });
+      } as any).catch(() => {});
+
+    } catch (err) {
+      console.error('Signup org creation error:', err);
+    }
 
     return { error: null };
   }
@@ -187,9 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
+      options: { redirectTo: `${window.location.origin}/` },
     });
     return { error: error as Error | null };
   }
@@ -218,19 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user,
-        session,
-        profile,
-        organizations,
-        currentOrg,
-        currentRole,
-        loading,
-        signIn,
-        signUp,
-        signInWithGoogle,
-        signOut,
-        resetPassword,
-        switchOrganization,
+        user, session, profile, organizations, currentOrg, currentRole, loading,
+        signIn, signUp, signInWithGoogle, signOut, resetPassword, switchOrganization,
       }}
     >
       {children}
@@ -240,8 +250,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
