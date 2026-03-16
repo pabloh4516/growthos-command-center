@@ -64,7 +64,7 @@ const SettingsPage = () => {
 
         <TabsContent value="workspace" className="mt-4">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl surface-glow p-5 max-w-lg space-y-4">
-            <div><label className="text-xs text-muted-foreground">Nome da Organização</label><input defaultValue="GrowthOS Agency" className="mt-1 h-9 w-full px-3 text-sm bg-secondary border-none rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary" /></div>
+            <div><label className="text-xs text-muted-foreground">Nome da Organização</label><input defaultValue="Growth Agency" className="mt-1 h-9 w-full px-3 text-sm bg-secondary border-none rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary" /></div>
             <div><label className="text-xs text-muted-foreground">Timezone</label><select className="mt-1 h-9 w-full px-3 text-sm bg-secondary border-none rounded-lg text-foreground"><option>America/Sao_Paulo (BRT)</option></select></div>
             <div><label className="text-xs text-muted-foreground">Moeda</label><select className="mt-1 h-9 w-full px-3 text-sm bg-secondary border-none rounded-lg text-foreground"><option>BRL (R$)</option><option>USD ($)</option></select></div>
             <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"><Save className="h-4 w-4" /> Salvar</button>

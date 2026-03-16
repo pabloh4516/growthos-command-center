@@ -203,7 +203,7 @@ const InsightsChatPage = () => {
                       variant={msg.role === "user" ? "outline" : "secondary"}
                       className="text-[10px] px-2 py-0"
                     >
-                      {msg.role === "user" ? "Você" : "IA GrowthOS"}
+                      {msg.role === "user" ? "Você" : "IA Growth"}
                     </Badge>
                   </div>
                   <div className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
@@ -230,7 +230,7 @@ const InsightsChatPage = () => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Badge variant="secondary" className="text-[10px] px-2 py-0">
-                    IA GrowthOS
+                    IA Growth
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

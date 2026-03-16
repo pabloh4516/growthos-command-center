@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
               <Brain className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">GrowthOS</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Growth</h1>
           <p className="text-muted-foreground mt-2">Recuperar senha</p>
         </div>
 
