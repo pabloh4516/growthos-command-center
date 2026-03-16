@@ -6,6 +6,15 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useLandingPages } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const platBadge: Record<string, string> = {
   "WordPress": "bg-blue-500/20 text-blue-400",
@@ -47,8 +56,28 @@ const columns: ColumnDef<any, any>[] = [
 ];
 
 const LandingPagesPage = () => {
+  const { currentOrg } = useAuth();
   const [selected, setSelected] = useState<any | null>(null);
   const { data: lpData, isLoading } = useLandingPages();
+  const [lpOpen, setLpOpen] = useState(false);
+  const [lpNome, setLpNome] = useState("");
+  const [lpUrl, setLpUrl] = useState("");
+  const [lpPlataforma, setLpPlataforma] = useState("");
+
+  async function handleCreateLP() {
+    if (!lpNome) { toast.error("Preencha o nome"); return; }
+    const { error } = await supabase.from('landing_pages').insert({
+      organization_id: currentOrg?.id,
+      name: lpNome,
+      url: lpUrl || null,
+      platform: lpPlataforma || 'custom',
+    } as any);
+    if (error) { toast.error("Erro ao criar landing page"); return; }
+    toast.success("Landing page criada com sucesso!");
+    setLpOpen(false);
+    setLpNome(""); setLpUrl(""); setLpPlataforma("");
+    window.location.reload();
+  }
 
   if (isLoading) {
     return (
@@ -66,7 +95,32 @@ const LandingPagesPage = () => {
   if (rawPages.length === 0) {
     return (
       <div className="space-y-6 max-w-[1600px]">
-        <PageHeader title="Landing Pages" subtitle="0 páginas monitoradas" />
+        <PageHeader title="Landing Pages" subtitle="0 p\u00e1ginas monitoradas" actions={
+          <Dialog open={lpOpen} onOpenChange={setLpOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Nova Landing Page</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova Landing Page</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Nome</Label><Input value={lpNome} onChange={e => setLpNome(e.target.value)} placeholder="Ex: LP Col\u00e1geno Promo" /></div>
+                <div><Label>URL</Label><Input value={lpUrl} onChange={e => setLpUrl(e.target.value)} placeholder="Ex: https://site.com/promo" /></div>
+                <div>
+                  <Label>Plataforma</Label>
+                  <Select value={lpPlataforma} onValueChange={setLpPlataforma}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="wordpress">WordPress</SelectItem>
+                      <SelectItem value="webflow">Webflow</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button className="w-full" onClick={handleCreateLP}>Salvar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        } />
         <div className="flex items-center justify-center h-64 text-muted-foreground">
           Nenhum dado encontrado.
         </div>
@@ -98,7 +152,32 @@ const LandingPagesPage = () => {
 
   return (
     <div className="space-y-6 max-w-[1600px]">
-      <PageHeader title="Landing Pages" subtitle={`${landingPages.length} páginas monitoradas`} />
+      <PageHeader title="Landing Pages" subtitle={`${landingPages.length} p\u00e1ginas monitoradas`} actions={
+        <Dialog open={lpOpen} onOpenChange={setLpOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Nova Landing Page</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Nova Landing Page</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Nome</Label><Input value={lpNome} onChange={e => setLpNome(e.target.value)} placeholder="Ex: LP Col\u00e1geno Promo" /></div>
+              <div><Label>URL</Label><Input value={lpUrl} onChange={e => setLpUrl(e.target.value)} placeholder="Ex: https://site.com/promo" /></div>
+              <div>
+                <Label>Plataforma</Label>
+                <Select value={lpPlataforma} onValueChange={setLpPlataforma}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wordpress">WordPress</SelectItem>
+                    <SelectItem value="webflow">Webflow</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button className="w-full" onClick={handleCreateLP}>Salvar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      } />
       <DataTable data={landingPages} columns={columns} searchPlaceholder="Buscar página..." onRowClick={(row: any) => setSelected(row)} />
 
       <Sheet open={!!selected} onOpenChange={() => setSelected(null)}>

@@ -1,14 +1,16 @@
 import { motion } from "framer-motion";
+import { useFunnels } from "@/hooks/use-supabase-data";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const stages = [
-  { name: "Impressões", value: 1250000, width: "100%" },
-  { name: "Cliques", value: 87500, width: "70%", rate: "7.0%" },
-  { name: "Visitas na Página", value: 72000, width: "58%", rate: "82.3%" },
-  { name: "Leads", value: 3847, width: "42%", rate: "5.3%" },
-  { name: "MQLs", value: 1539, width: "30%", rate: "40.0%" },
-  { name: "SQLs", value: 615, width: "20%", rate: "40.0%" },
-  { name: "Oportunidades", value: 246, width: "12%", rate: "40.0%" },
-  { name: "Vendas", value: 98, width: "6%", rate: "39.8%" },
+const fallbackStages = [
+  { name: "Impressoes", value: 0, width: "100%" },
+  { name: "Cliques", value: 0, width: "70%", rate: "0%" },
+  { name: "Visitas na Pagina", value: 0, width: "58%", rate: "0%" },
+  { name: "Leads", value: 0, width: "42%", rate: "0%" },
+  { name: "MQLs", value: 0, width: "30%", rate: "0%" },
+  { name: "SQLs", value: 0, width: "20%", rate: "0%" },
+  { name: "Oportunidades", value: 0, width: "12%", rate: "0%" },
+  { name: "Vendas", value: 0, width: "6%", rate: "0%" },
 ];
 
 function rateColor(rate: string | undefined) {
@@ -19,30 +21,82 @@ function rateColor(rate: string | undefined) {
   return "text-destructive";
 }
 
-const diagnosis = [
-  { label: "Tráfego", status: "✅", note: "Volume adequado", color: "text-success" },
-  { label: "CTR", status: "✅", note: "7.0% — acima da média", color: "text-success" },
-  { label: "Conversão da Página", status: "❌", note: "5.3% — média do setor: 8.2%", color: "text-destructive" },
-  { label: "Lead → MQL", status: "⚠️", note: "40% — pode melhorar", color: "text-warning" },
-  { label: "Conversão Final", status: "⚠️", note: "39.8% — estável", color: "text-warning" },
-];
+function buildStagesFromFunnel(funnel: any) {
+  const steps = funnel.steps || funnel.stages;
+  if (!Array.isArray(steps) || steps.length === 0) return null;
+
+  const widths = ["100%", "85%", "70%", "58%", "42%", "30%", "20%", "12%", "6%"];
+  return steps.map((s: any, i: number) => ({
+    name: s.name || s.label || `Etapa ${i + 1}`,
+    value: Number(s.value ?? s.count ?? 0),
+    width: widths[i] || "6%",
+    rate: i > 0 ? s.rate || s.conversion_rate : undefined,
+  }));
+}
+
+const LoadingSkeleton = () => (
+  <div className="space-y-6 max-w-[1400px]">
+    <div>
+      <Skeleton className="h-8 w-64 mb-2" />
+      <Skeleton className="h-4 w-80" />
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2">
+        <Skeleton className="h-[400px] rounded-xl" />
+      </div>
+      <Skeleton className="h-[400px] rounded-xl" />
+    </div>
+  </div>
+);
+
+const EmptyState = () => (
+  <div className="space-y-6 max-w-[1400px]">
+    <div>
+      <h1 className="text-2xl font-semibold tracking-tight">Dashboard de Funil</h1>
+      <p className="text-sm text-muted-foreground mt-1">Analise completa do funil de conversao</p>
+    </div>
+    <div className="flex flex-col items-center justify-center py-20 text-center bg-card rounded-xl surface-glow">
+      <p className="text-muted-foreground text-sm">Configure seu funil para ver dados.</p>
+    </div>
+  </div>
+);
 
 const FunnelPage = () => {
+  const { data, isLoading } = useFunnels();
+  const funnels = data || [];
+
+  if (isLoading) return <LoadingSkeleton />;
+  if (funnels.length === 0) return <EmptyState />;
+
+  const activeFunnel = funnels[0];
+  const stages = buildStagesFromFunnel(activeFunnel) || fallbackStages;
+
+  const diagnosis = [
+    { label: "Trafego", status: "---", note: "Volume adequado", color: "text-success" },
+    { label: "CTR", status: "---", note: "Acima da media", color: "text-success" },
+    { label: "Conversao da Pagina", status: "---", note: "Analise pendente", color: "text-warning" },
+    { label: "Lead -> MQL", status: "---", note: "Analise pendente", color: "text-warning" },
+    { label: "Conversao Final", status: "---", note: "Analise pendente", color: "text-warning" },
+  ];
+
   return (
     <div className="space-y-6 max-w-[1400px]">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard de Funil</h1>
-        <p className="text-sm text-muted-foreground mt-1">Análise completa do funil de conversão</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Analise completa do funil de conversao
+          {activeFunnel.name ? ` — ${activeFunnel.name}` : ""}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Funnel visualization */}
         <div className="lg:col-span-2 bg-card rounded-xl surface-glow p-6">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-6">
-            Funil de Conversão
+            Funil de Conversao
           </p>
           <div className="space-y-3 flex flex-col items-center">
-            {stages.map((stage, i) => (
+            {stages.map((stage: any, i: number) => (
               <motion.div
                 key={stage.name}
                 initial={{ opacity: 0, scaleX: 0 }}
@@ -53,7 +107,7 @@ const FunnelPage = () => {
               >
                 <span className="text-sm font-medium">{stage.name}</span>
                 <div className="flex items-center gap-3">
-                  <span className="font-mono tabular-nums text-sm">{stage.value.toLocaleString()}</span>
+                  <span className="font-mono tabular-nums text-sm">{Number(stage.value).toLocaleString()}</span>
                   {stage.rate && (
                     <span className={`text-xs font-medium ${rateColor(stage.rate)}`}>
                       {stage.rate}
@@ -68,7 +122,7 @@ const FunnelPage = () => {
         {/* Diagnosis panel */}
         <div className="bg-card rounded-xl surface-glow p-6 space-y-6">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-            Diagnóstico Automático
+            Diagnostico Automatico
           </p>
           <div className="space-y-4">
             {diagnosis.map((d) => (
@@ -84,16 +138,15 @@ const FunnelPage = () => {
 
           <div className="border-t border-border pt-4">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">
-              Conclusão
+              Conclusao
             </p>
             <p className="text-sm leading-relaxed">
-              Sua landing page é o principal gargalo. Você está perdendo{" "}
-              <span className="text-destructive font-semibold">~35%</span> das conversões possíveis nesta etapa.
+              Analise seu funil para identificar gargalos e oportunidades de melhoria.
             </p>
           </div>
 
           <button className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-            Ver Sugestões de IA
+            Ver Sugestoes de IA
           </button>
         </div>
       </div>

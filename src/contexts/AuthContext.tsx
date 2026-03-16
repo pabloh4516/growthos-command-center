@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -50,38 +50,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const initDone = useRef(false);
 
   async function loadUserData(userId: string) {
     try {
-      // Load profile — non-blocking
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (profileError) {
-        console.warn('Could not load profile:', profileError.message);
-      } else if (profileData) {
-        setProfile(profileData as UserProfile);
-      }
+      if (profileData) setProfile(profileData as UserProfile);
 
-      // Load organizations — non-blocking
-      const { data: memberships, error: memberError } = await supabase
+      const { data: memberships } = await supabase
         .from('organization_members')
-        .select(`
-          organization_id,
-          role,
-          organizations (
-            id, name, logo_url, timezone, currency, industry
-          )
-        `)
+        .select('organization_id, role, organizations(id, name, logo_url, timezone, currency, industry)')
         .eq('user_id', userId);
-
-      if (memberError) {
-        console.warn('Could not load organizations:', memberError.message);
-        return; // Don't block — user can still use the app
-      }
 
       if (memberships && memberships.length > 0) {
         const orgs = memberships.map((m: any) => ({
@@ -102,57 +86,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (err) {
-      console.error('Error loading user data:', err);
-      // Never block the app — loading will be set to false regardless
+      console.warn('loadUserData error (non-blocking):', err);
     }
   }
 
   useEffect(() => {
-    let mounted = true;
-
-    async function init() {
-      try {
-        const { data: { session: s } } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-
-        setSession(s);
-        setUser(s?.user ?? null);
-
-        if (s?.user) {
-          await loadUserData(s.user.id);
-        }
-      } catch (err) {
-        console.error('Auth init error:', err);
-      } finally {
-        if (mounted) setLoading(false);
+    // Safety timeout — NEVER stay loading more than 3 seconds
+    const safetyTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Auth safety timeout triggered — forcing loading=false');
+        setLoading(false);
       }
-    }
+    }, 3000);
 
-    init();
+    // Only run init once
+    if (initDone.current) return;
+    initDone.current = true;
+
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+
+      if (s?.user) {
+        await loadUserData(s.user.id).catch(() => {});
+      }
+
+      setLoading(false);
+      clearTimeout(safetyTimeout);
+    }).catch(() => {
+      setLoading(false);
+      clearTimeout(safetyTimeout);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, s) => {
-        if (!mounted) return;
-
         setSession(s);
         setUser(s?.user ?? null);
 
         if (s?.user) {
-          await loadUserData(s.user.id);
+          loadUserData(s.user.id).catch(() => {});
         } else {
           setProfile(null);
           setOrganizations([]);
           setCurrentOrg(null);
           setCurrentRole(null);
         }
-
-        if (mounted) setLoading(false);
+        // Don't set loading here — init already handled it
       }
     );
 
     return () => {
-      mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -164,44 +148,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signUp(email: string, password: string, name: string, orgName: string) {
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+      email, password,
       options: { data: { full_name: name } },
     });
-
     if (error || !data.user) return { error: error as Error | null };
 
-    // Create organization — use try/catch to not block signup
     try {
-      const { data: org, error: orgError } = await supabase
+      const { data: org } = await supabase
         .from('organizations')
         .insert({ name: orgName } as any)
         .select()
         .single();
 
-      if (orgError || !org) {
-        console.error('Failed to create org:', orgError);
-        return { error: null }; // User created, org failed — they can retry
-      }
-
-      await supabase
-        .from('organization_members')
-        .insert({
+      if (org) {
+        await supabase.from('organization_members').insert({
           organization_id: org.id,
           user_id: data.user.id,
           role: 'owner',
           accepted_at: new Date().toISOString(),
         } as any);
 
-      // Non-critical: AI settings and Utmify config
-      await supabase.from('ai_settings').insert({ organization_id: org.id } as any).catch(() => {});
-      await supabase.from('utmify_config').insert({
-        organization_id: org.id,
-        webhook_url_generated: `${window.location.origin}/api/utmify/webhook?org=${org.id}`,
-      } as any).catch(() => {});
-
+        await supabase.from('ai_settings').insert({ organization_id: org.id } as any).catch(() => {});
+        await supabase.from('utmify_config').insert({
+          organization_id: org.id,
+          webhook_url_generated: `${window.location.origin}/api/utmify/webhook?org=${org.id}`,
+        } as any).catch(() => {});
+      }
     } catch (err) {
-      console.error('Signup org creation error:', err);
+      console.error('Signup org error:', err);
     }
 
     return { error: null };
@@ -237,12 +211,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user, session, profile, organizations, currentOrg, currentRole, loading,
-        signIn, signUp, signInWithGoogle, signOut, resetPassword, switchOrganization,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user, session, profile, organizations, currentOrg, currentRole, loading,
+      signIn, signUp, signInWithGoogle, signOut, resetPassword, switchOrganization,
+    }}>
       {children}
     </AuthContext.Provider>
   );

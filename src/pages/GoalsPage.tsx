@@ -1,10 +1,19 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ProgressBarCustom } from "@/components/shared/ProgressBarCustom";
 import { formatBRL } from "@/components/shared/CurrencyDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Target, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Target, TrendingUp, TrendingDown, AlertTriangle, Plus } from "lucide-react";
 import { useGoals } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   on_track: { label: "No caminho", color: "text-success", icon: TrendingUp },
@@ -13,7 +22,35 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 };
 
 const GoalsPage = () => {
+  const { currentOrg } = useAuth();
   const { data: goalsData, isLoading } = useGoals();
+  const [goalOpen, setGoalOpen] = useState(false);
+  const [goalNome, setGoalNome] = useState("");
+  const [goalTipo, setGoalTipo] = useState("");
+  const [goalTarget, setGoalTarget] = useState("");
+  const [goalUnit, setGoalUnit] = useState("");
+  const [goalStart, setGoalStart] = useState("");
+  const [goalEnd, setGoalEnd] = useState("");
+
+  async function handleCreateGoal() {
+    if (!goalNome || !goalTipo || !goalTarget) { toast.error("Preencha nome, tipo e valor alvo"); return; }
+    const { error } = await supabase.from('goals').insert({
+      organization_id: currentOrg?.id,
+      name: goalNome,
+      type: goalTipo,
+      target_value: parseFloat(goalTarget),
+      current_value: 0,
+      unit: goalUnit,
+      period_start: goalStart || null,
+      period_end: goalEnd || null,
+      status: 'on_track',
+    } as any);
+    if (error) { toast.error("Erro ao criar meta"); return; }
+    toast.success("Meta criada com sucesso!");
+    setGoalOpen(false);
+    setGoalNome(""); setGoalTipo(""); setGoalTarget(""); setGoalUnit(""); setGoalStart(""); setGoalEnd("");
+    window.location.reload();
+  }
 
   if (isLoading) {
     return (
@@ -31,7 +68,39 @@ const GoalsPage = () => {
   if (allGoals.length === 0) {
     return (
       <div className="space-y-6 max-w-[1600px]">
-        <PageHeader title="Metas & OKRs" subtitle="Acompanhe metas de performance e objetivos estratégicos" />
+        <PageHeader title="Metas & OKRs" subtitle="Acompanhe metas de performance e objetivos estrat\u00e9gicos" actions={
+          <Dialog open={goalOpen} onOpenChange={setGoalOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Nova Meta</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova Meta</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Nome</Label><Input value={goalNome} onChange={e => setGoalNome(e.target.value)} placeholder="Ex: Aumentar leads em 30%" /></div>
+                <div>
+                  <Label>Tipo</Label>
+                  <Select value={goalTipo} onValueChange={setGoalTipo}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="leads">Leads</SelectItem>
+                      <SelectItem value="sales">Vendas</SelectItem>
+                      <SelectItem value="revenue">Receita</SelectItem>
+                      <SelectItem value="roas">ROAS</SelectItem>
+                      <SelectItem value="cpa">CPA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Valor Alvo</Label><Input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder="0" /></div>
+                <div><Label>Unidade</Label><Input value={goalUnit} onChange={e => setGoalUnit(e.target.value)} placeholder="Ex: leads, R$, x" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>In\u00edcio</Label><Input type="date" value={goalStart} onChange={e => setGoalStart(e.target.value)} /></div>
+                  <div><Label>Fim</Label><Input type="date" value={goalEnd} onChange={e => setGoalEnd(e.target.value)} /></div>
+                </div>
+                <Button className="w-full" onClick={handleCreateGoal}>Salvar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        } />
         <div className="flex items-center justify-center h-64 text-muted-foreground">
           Nenhum dado encontrado.
         </div>
@@ -62,7 +131,39 @@ const GoalsPage = () => {
 
   return (
     <div className="space-y-6 max-w-[1600px]">
-      <PageHeader title="Metas & OKRs" subtitle="Acompanhe metas de performance e objetivos estratégicos" />
+      <PageHeader title="Metas & OKRs" subtitle="Acompanhe metas de performance e objetivos estratégicos" actions={
+        <Dialog open={goalOpen} onOpenChange={setGoalOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Nova Meta</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Nova Meta</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Nome</Label><Input value={goalNome} onChange={e => setGoalNome(e.target.value)} placeholder="Ex: Aumentar leads em 30%" /></div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={goalTipo} onValueChange={setGoalTipo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="leads">Leads</SelectItem>
+                    <SelectItem value="sales">Vendas</SelectItem>
+                    <SelectItem value="revenue">Receita</SelectItem>
+                    <SelectItem value="roas">ROAS</SelectItem>
+                    <SelectItem value="cpa">CPA</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Valor Alvo</Label><Input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder="0" /></div>
+              <div><Label>Unidade</Label><Input value={goalUnit} onChange={e => setGoalUnit(e.target.value)} placeholder="Ex: leads, R$, x" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>In\u00edcio</Label><Input type="date" value={goalStart} onChange={e => setGoalStart(e.target.value)} /></div>
+                <div><Label>Fim</Label><Input type="date" value={goalEnd} onChange={e => setGoalEnd(e.target.value)} /></div>
+              </div>
+              <Button className="w-full" onClick={handleCreateGoal}>Salvar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      } />
 
       <Tabs defaultValue="metas">
         <TabsList>

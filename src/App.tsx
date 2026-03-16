@@ -50,6 +50,7 @@ import CampaignDetailPage from "./pages/CampaignDetailPage";
 import CampaignCreatePage from "./pages/CampaignCreatePage";
 import InsightsChatPage from "./pages/InsightsChatPage";
 import InsightsOptimizerPage from "./pages/InsightsOptimizerPage";
+import ConnectionsCallbackPage from "./pages/ConnectionsCallbackPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/connections/callback" element={<ConnectionsCallbackPage />} />
 
             {/* Protected app routes */}
             <Route

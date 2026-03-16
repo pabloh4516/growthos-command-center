@@ -1,10 +1,19 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
-import { Eye, ExternalLink } from "lucide-react";
+import { Eye, ExternalLink, Plus } from "lucide-react";
 import { useCompetitors } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const benchCols: ColumnDef<any, any>[] = [
   { accessorKey: "metrica", header: "Métrica" },
@@ -16,7 +25,27 @@ const benchCols: ColumnDef<any, any>[] = [
 ];
 
 const CompetitorsPage = () => {
+  const { currentOrg } = useAuth();
   const { data: competitorsData, isLoading } = useCompetitors();
+  const [compOpen, setCompOpen] = useState(false);
+  const [compNome, setCompNome] = useState("");
+  const [compDominio, setCompDominio] = useState("");
+  const [compNotas, setCompNotas] = useState("");
+
+  async function handleCreateCompetitor() {
+    if (!compNome) { toast.error("Preencha o nome"); return; }
+    const { error } = await supabase.from('competitors').insert({
+      organization_id: currentOrg?.id,
+      name: compNome,
+      domain: compDominio || null,
+      notes: compNotas || null,
+    } as any);
+    if (error) { toast.error("Erro ao adicionar concorrente"); return; }
+    toast.success("Concorrente adicionado com sucesso!");
+    setCompOpen(false);
+    setCompNome(""); setCompDominio(""); setCompNotas("");
+    window.location.reload();
+  }
 
   if (isLoading) {
     return (
@@ -34,7 +63,22 @@ const CompetitorsPage = () => {
   if (allCompetitors.length === 0) {
     return (
       <div className="space-y-6 max-w-[1600px]">
-        <PageHeader title="Competidores" subtitle="Monitore anúncios e benchmarks do setor" />
+        <PageHeader title="Competidores" subtitle="Monitore an\u00fancios e benchmarks do setor" actions={
+          <Dialog open={compOpen} onOpenChange={setCompOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Adicionar Concorrente</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Adicionar Concorrente</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Nome</Label><Input value={compNome} onChange={e => setCompNome(e.target.value)} placeholder="Ex: Concorrente XYZ" /></div>
+                <div><Label>Dom\u00ednio</Label><Input value={compDominio} onChange={e => setCompDominio(e.target.value)} placeholder="Ex: concorrente.com.br" /></div>
+                <div><Label>Notas</Label><Textarea value={compNotas} onChange={e => setCompNotas(e.target.value)} placeholder="Observa\u00e7\u00f5es sobre o concorrente..." /></div>
+                <Button className="w-full" onClick={handleCreateCompetitor}>Salvar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        } />
         <div className="flex items-center justify-center h-64 text-muted-foreground">
           Nenhum dado encontrado.
         </div>
@@ -66,7 +110,22 @@ const CompetitorsPage = () => {
 
   return (
     <div className="space-y-6 max-w-[1600px]">
-      <PageHeader title="Competidores" subtitle="Monitore anúncios e benchmarks do setor" />
+      <PageHeader title="Competidores" subtitle="Monitore an\u00fancios e benchmarks do setor" actions={
+        <Dialog open={compOpen} onOpenChange={setCompOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Adicionar Concorrente</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Adicionar Concorrente</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Nome</Label><Input value={compNome} onChange={e => setCompNome(e.target.value)} placeholder="Ex: Concorrente XYZ" /></div>
+              <div><Label>Dom\u00ednio</Label><Input value={compDominio} onChange={e => setCompDominio(e.target.value)} placeholder="Ex: concorrente.com.br" /></div>
+              <div><Label>Notas</Label><Textarea value={compNotas} onChange={e => setCompNotas(e.target.value)} placeholder="Observa\u00e7\u00f5es sobre o concorrente..." /></div>
+              <Button className="w-full" onClick={handleCreateCompetitor}>Salvar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      } />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {competitors.map((c: any, i: number) => (
           <motion.div key={c.nome + i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-card rounded-xl surface-glow p-5">

@@ -1,11 +1,42 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, TrendingDown, Image, Video, Type } from "lucide-react";
+import { Trophy, TrendingDown, Image, Video, Type, Plus } from "lucide-react";
 import { useCreatives } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const typeIcon: Record<string, any> = { video: Video, image: Image, carousel: Image, text: Type };
 
 const CreativesPage = () => {
+  const { currentOrg } = useAuth();
   const { data: creativesData, isLoading } = useCreatives();
+  const [crOpen, setCrOpen] = useState(false);
+  const [crNome, setCrNome] = useState("");
+  const [crTipo, setCrTipo] = useState("");
+  const [crPlataforma, setCrPlataforma] = useState("");
+  const [crTags, setCrTags] = useState("");
+
+  async function handleCreateCreative() {
+    if (!crNome || !crTipo) { toast.error("Preencha nome e tipo"); return; }
+    const { error } = await supabase.from('creative_library').insert({
+      organization_id: currentOrg?.id,
+      name: crNome,
+      type: crTipo,
+      platform: crPlataforma || 'google_ads',
+      tags: crTags ? crTags.split(',').map(t => t.trim()) : [],
+    } as any);
+    if (error) { toast.error("Erro ao criar criativo"); return; }
+    toast.success("Criativo criado com sucesso!");
+    setCrOpen(false);
+    setCrNome(""); setCrTipo(""); setCrPlataforma(""); setCrTags("");
+    window.location.reload();
+  }
 
   if (isLoading) {
     return (
@@ -28,9 +59,40 @@ const CreativesPage = () => {
             <h1 className="text-2xl font-semibold tracking-tight">Biblioteca de Criativos</h1>
             <p className="text-sm text-muted-foreground mt-1">0 criativos</p>
           </div>
-          <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-            + Upload Criativo
-          </button>
+          <Dialog open={crOpen} onOpenChange={setCrOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Novo Criativo</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Novo Criativo</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Nome</Label><Input value={crNome} onChange={e => setCrNome(e.target.value)} placeholder="Ex: Banner Black Friday" /></div>
+                <div>
+                  <Label>Tipo</Label>
+                  <Select value={crTipo} onValueChange={setCrTipo}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="image">Imagem</SelectItem>
+                      <SelectItem value="video">V\u00eddeo</SelectItem>
+                      <SelectItem value="carousel">Carrossel</SelectItem>
+                      <SelectItem value="text">Texto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Plataforma</Label>
+                  <Select value={crPlataforma} onValueChange={setCrPlataforma}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="google_ads">Google Ads</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Tags (separadas por v\u00edrgula)</Label><Input value={crTags} onChange={e => setCrTags(e.target.value)} placeholder="Ex: promo, verao, desconto" /></div>
+                <Button className="w-full" onClick={handleCreateCreative}>Salvar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
         <div className="flex items-center justify-center h-64 text-muted-foreground">
           Nenhum dado encontrado.
@@ -59,9 +121,40 @@ const CreativesPage = () => {
           <h1 className="text-2xl font-semibold tracking-tight">Biblioteca de Criativos</h1>
           <p className="text-sm text-muted-foreground mt-1">{creatives.length} criativos · {platforms.size} plataformas</p>
         </div>
-        <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-          + Upload Criativo
-        </button>
+        <Dialog open={crOpen} onOpenChange={setCrOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Novo Criativo</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Novo Criativo</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Nome</Label><Input value={crNome} onChange={e => setCrNome(e.target.value)} placeholder="Ex: Banner Black Friday" /></div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={crTipo} onValueChange={setCrTipo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="image">Imagem</SelectItem>
+                    <SelectItem value="video">V\u00eddeo</SelectItem>
+                    <SelectItem value="carousel">Carrossel</SelectItem>
+                    <SelectItem value="text">Texto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Plataforma</Label>
+                <Select value={crPlataforma} onValueChange={setCrPlataforma}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="google_ads">Google Ads</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Tags (separadas por v\u00edrgula)</Label><Input value={crTags} onChange={e => setCrTags(e.target.value)} placeholder="Ex: promo, verao, desconto" /></div>
+              <Button className="w-full" onClick={handleCreateCreative}>Salvar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

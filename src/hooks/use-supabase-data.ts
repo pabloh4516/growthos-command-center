@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as queries from '@/services/supabase-queries';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -8,7 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 function useOrgId() {
   const { currentOrg } = useAuth();
-  return currentOrg?.id ?? null;
+  // Fallback to localStorage if context hasn't loaded yet
+  return currentOrg?.id ?? localStorage.getItem('growthOS_current_org') ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -587,6 +589,48 @@ export function useOptimizationLogs() {
   return useQuery({
     queryKey: ['optimization-logs', orgId],
     queryFn: () => queries.fetchOptimizationLogs(orgId!),
+    enabled: !!orgId,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Custom Dashboards
+// ---------------------------------------------------------------------------
+
+export function useCustomDashboards() {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ['custom-dashboards', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('custom_dashboards' as any)
+        .select('*')
+        .eq('organization_id', orgId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// AI Reports
+// ---------------------------------------------------------------------------
+
+export function useAIReports() {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ['ai-reports', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ai_reports' as any)
+        .select('*')
+        .eq('organization_id', orgId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
     enabled: !!orgId,
   });
 }

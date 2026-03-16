@@ -12,6 +12,15 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
 import { useFinancialRecords, useBudgets } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Plus } from "lucide-react";
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload) return null;
@@ -48,9 +57,32 @@ const campFinCols: ColumnDef<any, any>[] = [
 ];
 
 const FinancialPage = () => {
+  const { currentOrg } = useAuth();
   const { data: financialData, isLoading: financialLoading } = useFinancialRecords();
   const { data: budgetsData, isLoading: budgetsLoading } = useBudgets();
   const [budgetIncrease, setBudgetIncrease] = useState(20);
+  const [costOpen, setCostOpen] = useState(false);
+  const [costCategoria, setCostCategoria] = useState("");
+  const [costDescricao, setCostDescricao] = useState("");
+  const [costValor, setCostValor] = useState("");
+  const [costData, setCostData] = useState("");
+
+  async function handleCreateCost() {
+    if (!costCategoria || !costValor) { toast.error("Preencha categoria e valor"); return; }
+    const { error } = await supabase.from('financial_records').insert({
+      organization_id: currentOrg?.id,
+      type: 'operational_cost',
+      category: costCategoria,
+      description: costDescricao,
+      amount: parseFloat(costValor),
+      date: costData || new Date().toISOString().split('T')[0],
+    } as any);
+    if (error) { toast.error("Erro ao registrar custo"); return; }
+    toast.success("Custo registrado com sucesso!");
+    setCostOpen(false);
+    setCostCategoria(""); setCostDescricao(""); setCostValor(""); setCostData("");
+    window.location.reload();
+  }
 
   const isLoading = financialLoading || budgetsLoading;
 
@@ -253,6 +285,44 @@ const FinancialPage = () => {
         </TabsContent>
 
         <TabsContent value="custos" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={costOpen} onOpenChange={setCostOpen}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Registrar Custo</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Registrar Custo</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Categoria</Label>
+                    <Select value={costCategoria} onValueChange={setCostCategoria}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ferramenta">Ferramenta</SelectItem>
+                        <SelectItem value="equipe">Equipe</SelectItem>
+                        <SelectItem value="infra">Infraestrutura</SelectItem>
+                        <SelectItem value="marketing">Marketing</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Descri\u00e7\u00e3o</Label>
+                    <Input value={costDescricao} onChange={e => setCostDescricao(e.target.value)} placeholder="Ex: Assinatura SEMrush" />
+                  </div>
+                  <div>
+                    <Label>Valor R$</Label>
+                    <Input type="number" step="0.01" value={costValor} onChange={e => setCostValor(e.target.value)} placeholder="0.00" />
+                  </div>
+                  <div>
+                    <Label>Data</Label>
+                    <Input type="date" value={costData} onChange={e => setCostData(e.target.value)} />
+                  </div>
+                  <Button className="w-full" onClick={handleCreateCost}>Salvar</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           {custos.length > 0 ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl surface-glow overflow-hidden">
               <table className="w-full text-sm">

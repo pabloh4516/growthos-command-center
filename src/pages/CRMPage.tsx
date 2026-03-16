@@ -7,9 +7,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { User, Mail, Phone, MapPin, Calendar, Target, TrendingUp, Star } from "lucide-react";
+import { User, Mail, Phone, MapPin, Calendar, Target, TrendingUp, Star, Plus } from "lucide-react";
 import { formatBRL } from "@/components/shared/CurrencyDisplay";
 import { useContacts, useDeals, usePipelines } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 // --- Types ---
 interface MappedContact {
@@ -167,8 +175,30 @@ const LoadingSkeleton = () => (
 );
 
 const CRMPage = () => {
+  const { currentOrg } = useAuth();
   const [selectedContact, setSelectedContact] = useState<MappedContact | null>(null);
   const { data: contactsRaw, isLoading: contactsLoading } = useContacts();
+  const [ctOpen, setCtOpen] = useState(false);
+  const [ctNome, setCtNome] = useState("");
+  const [ctEmail, setCtEmail] = useState("");
+  const [ctTelefone, setCtTelefone] = useState("");
+  const [ctSource, setCtSource] = useState("");
+
+  async function handleCreateContact() {
+    if (!ctNome && !ctEmail) { toast.error("Preencha nome ou email"); return; }
+    const { error } = await supabase.from('contacts').insert({
+      organization_id: currentOrg?.id,
+      name: ctNome || null,
+      email: ctEmail || null,
+      phone: ctTelefone || null,
+      source: ctSource || 'manual',
+    } as any);
+    if (error) { toast.error("Erro ao criar contato"); return; }
+    toast.success("Contato criado com sucesso!");
+    setCtOpen(false);
+    setCtNome(""); setCtEmail(""); setCtTelefone(""); setCtSource("");
+    window.location.reload();
+  }
   const { data: dealsRaw, isLoading: dealsLoading } = useDeals();
   const { data: pipelinesRaw, isLoading: pipelinesLoading } = usePipelines();
 
@@ -298,7 +328,35 @@ const CRMPage = () => {
         </TabsList>
 
         {/* CONTATOS TAB */}
-        <TabsContent value="contatos" className="mt-4">
+        <TabsContent value="contatos" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={ctOpen} onOpenChange={setCtOpen}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Novo Contato</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Novo Contato</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div><Label>Nome</Label><Input value={ctNome} onChange={e => setCtNome(e.target.value)} placeholder="Ex: Jo\u00e3o Silva" /></div>
+                  <div><Label>Email</Label><Input type="email" value={ctEmail} onChange={e => setCtEmail(e.target.value)} placeholder="Ex: joao@email.com" /></div>
+                  <div><Label>Telefone</Label><Input value={ctTelefone} onChange={e => setCtTelefone(e.target.value)} placeholder="Ex: (11) 99999-9999" /></div>
+                  <div>
+                    <Label>Source</Label>
+                    <Select value={ctSource} onValueChange={setCtSource}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="google_ads">Google Ads</SelectItem>
+                        <SelectItem value="organic">Org\u00e2nico</SelectItem>
+                        <SelectItem value="referral">Indica\u00e7\u00e3o</SelectItem>
+                        <SelectItem value="manual">Manual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button className="w-full" onClick={handleCreateContact}>Salvar</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           {contacts.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Nenhum contato encontrado. Conecte sua conta do Google Ads para comecar.</div>
           ) : (

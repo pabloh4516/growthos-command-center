@@ -4,6 +4,13 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useCalendarEvents } from "@/hooks/use-supabase-data";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const eventTypes: Record<string, { label: string; color: string }> = {
   campanha: { label: "Lançamento Campanha", color: "bg-blue-500" },
@@ -15,8 +22,30 @@ const eventTypes: Record<string, { label: string; color: string }> = {
 };
 
 const CalendarPage = () => {
+  const { currentOrg } = useAuth();
   const [selected, setSelected] = useState<any | null>(null);
   const { data: calendarData, isLoading } = useCalendarEvents();
+  const [evtOpen, setEvtOpen] = useState(false);
+  const [evtTitulo, setEvtTitulo] = useState("");
+  const [evtTipo, setEvtTipo] = useState("");
+  const [evtData, setEvtData] = useState("");
+  const [evtCor, setEvtCor] = useState("");
+
+  async function handleCreateEvent() {
+    if (!evtTitulo || !evtTipo) { toast.error("Preencha t\u00edtulo e tipo"); return; }
+    const { error } = await supabase.from('calendar_events').insert({
+      organization_id: currentOrg?.id,
+      title: evtTitulo,
+      event_type: evtTipo,
+      start_date: evtData || new Date().toISOString(),
+      color: evtCor || null,
+    } as any);
+    if (error) { toast.error("Erro ao criar evento"); return; }
+    toast.success("Evento criado com sucesso!");
+    setEvtOpen(false);
+    setEvtTitulo(""); setEvtTipo(""); setEvtData(""); setEvtCor("");
+    window.location.reload();
+  }
 
   if (isLoading) {
     return (
@@ -86,15 +115,42 @@ const CalendarPage = () => {
   return (
     <div className="space-y-6 max-w-[1600px]">
       <PageHeader title="Calendário de Marketing" subtitle="Planejamento de campanhas, criativos e eventos" actions={
-        <Dialog>
+        <Dialog open={evtOpen} onOpenChange={setEvtOpen}>
           <DialogTrigger asChild>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-              <Plus className="h-4 w-4" /> Novo Evento
-            </button>
+            <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Novo Evento</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Novo Evento</DialogTitle></DialogHeader>
-            <p className="text-sm text-muted-foreground">Formulário de criação de evento em desenvolvimento.</p>
+            <div className="space-y-4">
+              <div><Label>T&#237;tulo</Label><Input value={evtTitulo} onChange={e => setEvtTitulo(e.target.value)} placeholder="Ex: Lan&#231;amento Black Friday" /></div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={evtTipo} onValueChange={setEvtTipo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="campaign_launch">Lan&#231;amento Campanha</SelectItem>
+                    <SelectItem value="creative_deadline">Deadline Criativo</SelectItem>
+                    <SelectItem value="client_meeting">Reuni&#227;o Cliente</SelectItem>
+                    <SelectItem value="report_due">Relat&#243;rio</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Data e Hora</Label><Input type="datetime-local" value={evtData} onChange={e => setEvtData(e.target.value)} /></div>
+              <div>
+                <Label>Cor</Label>
+                <Select value={evtCor} onValueChange={setEvtCor}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blue">Azul</SelectItem>
+                    <SelectItem value="purple">Roxo</SelectItem>
+                    <SelectItem value="green">Verde</SelectItem>
+                    <SelectItem value="yellow">Amarelo</SelectItem>
+                    <SelectItem value="red">Vermelho</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button className="w-full" onClick={handleCreateEvent}>Salvar</Button>
+            </div>
           </DialogContent>
         </Dialog>
       } />

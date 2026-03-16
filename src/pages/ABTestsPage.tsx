@@ -5,6 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProgressBarCustom } from "@/components/shared/ProgressBarCustom";
 import { Trophy, Plus } from "lucide-react";
 import { useABTests } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Variant = { name: string; impressions: number; clicks: number; conversions: number; cvr: number };
 type Test = { id: string; name: string; tipo: string; status: string; significancia: number; sampleCurrent: number; sampleNeeded: number; variants: Variant[]; winner?: string };
@@ -66,7 +74,28 @@ function TestCard({ test }: { test: Test }) {
 }
 
 const ABTestsPage = () => {
+  const { currentOrg } = useAuth();
   const { data: abTestsData, isLoading } = useABTests();
+  const [abOpen, setAbOpen] = useState(false);
+  const [abNome, setAbNome] = useState("");
+  const [abTipo, setAbTipo] = useState("");
+  const [abMetrica, setAbMetrica] = useState("");
+
+  async function handleCreateABTest() {
+    if (!abNome || !abTipo) { toast.error("Preencha nome e tipo"); return; }
+    const { error } = await supabase.from('ab_tests').insert({
+      organization_id: currentOrg?.id,
+      name: abNome,
+      test_type: abTipo,
+      primary_metric: abMetrica || 'conversion_rate',
+      status: 'draft',
+    } as any);
+    if (error) { toast.error("Erro ao criar teste"); return; }
+    toast.success("Teste A/B criado com sucesso!");
+    setAbOpen(false);
+    setAbNome(""); setAbTipo(""); setAbMetrica("");
+    window.location.reload();
+  }
 
   if (isLoading) {
     return (
@@ -85,7 +114,43 @@ const ABTestsPage = () => {
     return (
       <div className="space-y-6 max-w-[1400px]">
         <PageHeader title="Testes A/B" subtitle="Crie e gerencie testes para criativos, páginas e audiências"
-          actions={<button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"><Plus className="h-4 w-4" /> Novo Teste</button>} />
+          actions={
+          <Dialog open={abOpen} onOpenChange={setAbOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Novo Teste</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Novo Teste A/B</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Nome</Label><Input value={abNome} onChange={e => setAbNome(e.target.value)} placeholder="Ex: Teste CTA vermelho vs azul" /></div>
+                <div>
+                  <Label>Tipo</Label>
+                  <Select value={abTipo} onValueChange={setAbTipo}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="creative">Criativo</SelectItem>
+                      <SelectItem value="page">P&#225;gina</SelectItem>
+                      <SelectItem value="audience">Audi&#234;ncia</SelectItem>
+                      <SelectItem value="copy">Copy</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>M&#233;trica Principal</Label>
+                  <Select value={abMetrica} onValueChange={setAbMetrica}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="conversion_rate">Taxa de Convers&#227;o</SelectItem>
+                      <SelectItem value="ctr">CTR</SelectItem>
+                      <SelectItem value="cpa">CPA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button className="w-full" onClick={handleCreateABTest}>Salvar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        } />
         <div className="flex items-center justify-center h-64 text-muted-foreground">
           Nenhum dado encontrado.
         </div>
@@ -118,7 +183,43 @@ const ABTestsPage = () => {
   return (
     <div className="space-y-6 max-w-[1400px]">
       <PageHeader title="Testes A/B" subtitle="Crie e gerencie testes para criativos, páginas e audiências"
-        actions={<button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"><Plus className="h-4 w-4" /> Novo Teste</button>} />
+        actions={
+          <Dialog open={abOpen} onOpenChange={setAbOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Novo Teste</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Novo Teste A/B</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Nome</Label><Input value={abNome} onChange={e => setAbNome(e.target.value)} placeholder="Ex: Teste CTA vermelho vs azul" /></div>
+                <div>
+                  <Label>Tipo</Label>
+                  <Select value={abTipo} onValueChange={setAbTipo}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="creative">Criativo</SelectItem>
+                      <SelectItem value="page">P&#225;gina</SelectItem>
+                      <SelectItem value="audience">Audi&#234;ncia</SelectItem>
+                      <SelectItem value="copy">Copy</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>M&#233;trica Principal</Label>
+                  <Select value={abMetrica} onValueChange={setAbMetrica}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="conversion_rate">Taxa de Convers&#227;o</SelectItem>
+                      <SelectItem value="ctr">CTR</SelectItem>
+                      <SelectItem value="cpa">CPA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button className="w-full" onClick={handleCreateABTest}>Salvar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        } />
 
       <Tabs defaultValue="ativos">
         <TabsList>

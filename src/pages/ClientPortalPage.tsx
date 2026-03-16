@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { KPICard } from "@/components/KPICard";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Check, X, MessageSquare, Send } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const kpis = [
   { title: "Leads Gerados", value: "45", change: 18.2, spark: [28, 32, 35, 38, 40, 42, 45] },
@@ -15,25 +16,28 @@ const kpis = [
 const chartData = Array.from({ length: 30 }, (_, i) => ({ day: `${i + 1}/01`, leads: Math.round(1 + Math.random() * 3), vendas: Math.random() > 0.6 ? 1 : 0 }));
 
 const criativos = [
-  { id: "c1", nome: "Banner Colágeno — Janeiro", status: "pending", preview: "🖼️" },
-  { id: "c2", nome: "Vídeo Depoimento Cliente", status: "pending", preview: "🎬" },
-  { id: "c3", nome: "Carrossel Benefícios", status: "pending", preview: "📊" },
-  { id: "c4", nome: "Story Promoção Relâmpago", status: "pending", preview: "⚡" },
+  { id: "c1", nome: "Banner Colageno — Janeiro", status: "pending", preview: "img" },
+  { id: "c2", nome: "Video Depoimento Cliente", status: "pending", preview: "vid" },
+  { id: "c3", nome: "Carrossel Beneficios", status: "pending", preview: "chart" },
+  { id: "c4", nome: "Story Promocao Relampago", status: "pending", preview: "zap" },
 ];
 
 const mensagens = [
-  { autor: "Equipe", msg: "Olá! O relatório semanal está disponível. Tivemos ótimos resultados esta semana!", time: "10:30" },
-  { autor: "Cliente", msg: "Ótimo! Vi que as vendas subiram. Podemos escalar o budget?", time: "11:15" },
-  { autor: "Equipe", msg: "Sim! Recomendamos aumentar 20% no Google Search. Preparamos 4 novos criativos para aprovação.", time: "11:45" },
+  { autor: "Equipe", msg: "Ola! O relatorio semanal esta disponivel. Tivemos otimos resultados esta semana!", time: "10:30" },
+  { autor: "Cliente", msg: "Otimo! Vi que as vendas subiram. Podemos escalar o budget?", time: "11:15" },
+  { autor: "Equipe", msg: "Sim! Recomendamos aumentar 20% no Google Search. Preparamos 4 novos criativos para aprovacao.", time: "11:45" },
   { autor: "Cliente", msg: "Perfeito, vou olhar os criativos agora.", time: "12:00" },
 ];
 
 const ClientPortalPage = () => {
   const [criativosState, setCriativosState] = useState(criativos);
+  const { currentOrg } = useAuth();
+
+  const orgName = currentOrg?.name || "Sua Empresa";
 
   return (
     <div className="space-y-6 max-w-[1400px]">
-      <PageHeader title="Portal do Cliente" subtitle="Visão simplificada de resultados e aprovações" />
+      <PageHeader title={`Portal do Cliente — ${orgName}`} subtitle="Visao simplificada de resultados e aprovacoes" />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => <KPICard key={kpi.title} {...kpi} sparkData={kpi.spark} delay={i * 0.05} />)}
@@ -41,12 +45,12 @@ const ClientPortalPage = () => {
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl surface-glow p-5">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Este mês geramos <span className="text-foreground font-semibold">45 leads</span> e <span className="text-foreground font-semibold">12 vendas</span> com ROI de <span className="text-success font-semibold">320%</span>. Seu investimento de <span className="font-semibold">R$5.000</span> retornou <span className="text-success font-semibold">R$21.000</span> em receita.
+          Este mes geramos <span className="text-foreground font-semibold">45 leads</span> e <span className="text-foreground font-semibold">12 vendas</span> com ROI de <span className="text-success font-semibold">320%</span>. Seu investimento de <span className="font-semibold">R$5.000</span> retornou <span className="text-success font-semibold">R$21.000</span> em receita.
         </p>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Aprovação Criativos */}
+        {/* Aprovacao Criativos */}
         <div>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">Criativos Pendentes</p>
           <div className="space-y-3">
@@ -54,16 +58,16 @@ const ClientPortalPage = () => {
               <motion.div key={c.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl surface-glow p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-2xl">{c.preview}</div>
+                    <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-xs font-medium text-muted-foreground">{c.preview}</div>
                     <p className="text-sm font-medium">{c.nome}</p>
                   </div>
                   {c.status === "pending" ? (
                     <div className="flex gap-2">
                       <button onClick={() => setCriativosState(prev => prev.map(x => x.id === c.id ? { ...x, status: "approved" } : x))} className="px-3 py-1.5 rounded-md bg-success text-success-foreground text-xs font-medium hover:bg-success/90 flex items-center gap-1"><Check className="h-3 w-3" /> Aprovar</button>
-                      <button onClick={() => setCriativosState(prev => prev.map(x => x.id === c.id ? { ...x, status: "revision" } : x))} className="px-3 py-1.5 rounded-md bg-warning text-warning-foreground text-xs font-medium hover:bg-warning/90 flex items-center gap-1"><X className="h-3 w-3" /> Revisão</button>
+                      <button onClick={() => setCriativosState(prev => prev.map(x => x.id === c.id ? { ...x, status: "revision" } : x))} className="px-3 py-1.5 rounded-md bg-warning text-warning-foreground text-xs font-medium hover:bg-warning/90 flex items-center gap-1"><X className="h-3 w-3" /> Revisao</button>
                     </div>
                   ) : (
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${c.status === "approved" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}>{c.status === "approved" ? "Aprovado ✓" : "Em Revisão"}</span>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${c.status === "approved" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}>{c.status === "approved" ? "Aprovado" : "Em Revisao"}</span>
                   )}
                 </div>
               </motion.div>

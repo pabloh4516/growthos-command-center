@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
@@ -6,8 +7,15 @@ import { ColumnDef } from "@tanstack/react-table";
 import { formatBRL } from "@/components/shared/CurrencyDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus } from "lucide-react";
 import { useSEOKeywords } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const rankColumns: ColumnDef<any, any>[] = [
   { accessorKey: "keyword", header: "Keyword", cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span> },
@@ -52,7 +60,29 @@ const seoVsPaidColumns: ColumnDef<any, any>[] = [
 ];
 
 const SEOPage = () => {
+  const { currentOrg } = useAuth();
   const { data: seoData, isLoading } = useSEOKeywords();
+  const [seoOpen, setSeoOpen] = useState(false);
+  const [seoKeyword, setSeoKeyword] = useState("");
+  const [seoPosition, setSeoPosition] = useState("");
+  const [seoVolume, setSeoVolume] = useState("");
+  const [seoUrl, setSeoUrl] = useState("");
+
+  async function handleCreateKeyword() {
+    if (!seoKeyword) { toast.error("Preencha a keyword"); return; }
+    const { error } = await supabase.from('seo_keywords').insert({
+      organization_id: currentOrg?.id,
+      keyword: seoKeyword,
+      current_position: seoPosition ? parseInt(seoPosition) : null,
+      search_volume: seoVolume ? parseInt(seoVolume) : null,
+      url: seoUrl || null,
+    } as any);
+    if (error) { toast.error("Erro ao adicionar keyword"); return; }
+    toast.success("Keyword adicionada com sucesso!");
+    setSeoOpen(false);
+    setSeoKeyword(""); setSeoPosition(""); setSeoVolume(""); setSeoUrl("");
+    window.location.reload();
+  }
 
   if (isLoading) {
     return (
@@ -70,7 +100,23 @@ const SEOPage = () => {
   if (rawKeywords.length === 0) {
     return (
       <div className="space-y-6 max-w-[1600px]">
-        <PageHeader title="SEO Monitor" subtitle="Rankings orgânicos, sessões e comparação SEO vs Paid" />
+        <PageHeader title="SEO Monitor" subtitle="Rankings org\u00e2nicos, sess\u00f5es e compara\u00e7\u00e3o SEO vs Paid" actions={
+          <Dialog open={seoOpen} onOpenChange={setSeoOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Adicionar Keyword</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Adicionar Keyword</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Keyword</Label><Input value={seoKeyword} onChange={e => setSeoKeyword(e.target.value)} placeholder="Ex: suplemento col\u00e1geno" /></div>
+                <div><Label>Posi\u00e7\u00e3o Atual</Label><Input type="number" value={seoPosition} onChange={e => setSeoPosition(e.target.value)} placeholder="Ex: 5" /></div>
+                <div><Label>Volume de Busca</Label><Input type="number" value={seoVolume} onChange={e => setSeoVolume(e.target.value)} placeholder="Ex: 12000" /></div>
+                <div><Label>URL</Label><Input value={seoUrl} onChange={e => setSeoUrl(e.target.value)} placeholder="Ex: /blog/colageno" /></div>
+                <Button className="w-full" onClick={handleCreateKeyword}>Salvar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        } />
         <div className="flex items-center justify-center h-64 text-muted-foreground">
           Nenhum dado encontrado.
         </div>
@@ -105,7 +151,23 @@ const SEOPage = () => {
 
   return (
     <div className="space-y-6 max-w-[1600px]">
-      <PageHeader title="SEO Monitor" subtitle="Rankings orgânicos, sessões e comparação SEO vs Paid" />
+      <PageHeader title="SEO Monitor" subtitle="Rankings org\u00e2nicos, sess\u00f5es e compara\u00e7\u00e3o SEO vs Paid" actions={
+        <Dialog open={seoOpen} onOpenChange={setSeoOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Adicionar Keyword</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Adicionar Keyword</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Keyword</Label><Input value={seoKeyword} onChange={e => setSeoKeyword(e.target.value)} placeholder="Ex: suplemento col\u00e1geno" /></div>
+              <div><Label>Posi\u00e7\u00e3o Atual</Label><Input type="number" value={seoPosition} onChange={e => setSeoPosition(e.target.value)} placeholder="Ex: 5" /></div>
+              <div><Label>Volume de Busca</Label><Input type="number" value={seoVolume} onChange={e => setSeoVolume(e.target.value)} placeholder="Ex: 12000" /></div>
+              <div><Label>URL</Label><Input value={seoUrl} onChange={e => setSeoUrl(e.target.value)} placeholder="Ex: /blog/colageno" /></div>
+              <Button className="w-full" onClick={handleCreateKeyword}>Salvar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      } />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KPICard title="Sessões Orgânicas" value={totalSessoes.toLocaleString("pt-BR")} change={0} sparkData={overviewData.slice(-7).map(d => d.sessoes)} />

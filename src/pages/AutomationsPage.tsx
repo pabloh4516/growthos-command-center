@@ -5,8 +5,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { DataTable } from "@/components/shared/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { Mail, MessageSquare, Clock, ArrowRight, Zap, GitBranch, Send, Eye } from "lucide-react";
+import { Mail, MessageSquare, Clock, ArrowRight, Zap, GitBranch, Send, Eye, Plus } from "lucide-react";
 import { useAutomationRules } from "@/hooks/use-supabase-data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const nodeIcon: Record<string, any> = { trigger: Zap, wait: Clock, email: Mail, condition: GitBranch };
 const nodeColor: Record<string, string> = { trigger: "bg-success/20 text-success", wait: "bg-warning/20 text-warning", email: "bg-primary/20 text-primary", condition: "bg-purple-500/20 text-purple-400" };
@@ -27,8 +35,49 @@ const logCols: ColumnDef<any, any>[] = [
 ];
 
 const AutomationsPage = () => {
+  const { currentOrg } = useAuth();
   const [selectedSeq, setSelectedSeq] = useState<string | null>(null);
   const { data: automationsData, isLoading } = useAutomationRules();
+  const [seqOpen, setSeqOpen] = useState(false);
+  const [seqNome, setSeqNome] = useState("");
+  const [seqTrigger, setSeqTrigger] = useState("");
+  const [ruleOpen, setRuleOpen] = useState(false);
+  const [ruleNome, setRuleNome] = useState("");
+  const [ruleTrigger, setRuleTrigger] = useState("");
+  const [ruleCondition, setRuleCondition] = useState("");
+  const [ruleAction, setRuleAction] = useState("");
+
+  async function handleCreateSequence() {
+    if (!seqNome || !seqTrigger) { toast.error("Preencha nome e trigger"); return; }
+    const { error } = await supabase.from('email_sequences' as any).insert({
+      organization_id: currentOrg?.id,
+      name: seqNome,
+      trigger_event: seqTrigger,
+      status: 'active',
+    } as any);
+    if (error) { toast.error("Erro ao criar sequ\u00eancia"); return; }
+    toast.success("Sequ\u00eancia criada com sucesso!");
+    setSeqOpen(false);
+    setSeqNome(""); setSeqTrigger("");
+    window.location.reload();
+  }
+
+  async function handleCreateRule() {
+    if (!ruleNome) { toast.error("Preencha o nome"); return; }
+    const { error } = await supabase.from('automation_rules').insert({
+      organization_id: currentOrg?.id,
+      name: ruleNome,
+      trigger_event: ruleTrigger || null,
+      conditions: ruleCondition ? { raw: ruleCondition } : null,
+      actions: ruleAction ? { raw: ruleAction } : null,
+      status: 'active',
+    } as any);
+    if (error) { toast.error("Erro ao criar regra"); return; }
+    toast.success("Regra criada com sucesso!");
+    setRuleOpen(false);
+    setRuleNome(""); setRuleTrigger(""); setRuleCondition(""); setRuleAction("");
+    window.location.reload();
+  }
 
   if (isLoading) {
     return (
@@ -115,6 +164,31 @@ const AutomationsPage = () => {
 
         {/* EMAIL */}
         <TabsContent value="email" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={seqOpen} onOpenChange={setSeqOpen}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Nova Sequ\u00eancia</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Nova Sequ\u00eancia de Email</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div><Label>Nome</Label><Input value={seqNome} onChange={e => setSeqNome(e.target.value)} placeholder="Ex: Boas-vindas Lead" /></div>
+                  <div>
+                    <Label>Trigger</Label>
+                    <Select value={seqTrigger} onValueChange={setSeqTrigger}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="lead_created">Lead Criado</SelectItem>
+                        <SelectItem value="cart_abandoned">Carrinho Abandonado</SelectItem>
+                        <SelectItem value="inactive_30d">Inativo 30 dias</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button className="w-full" onClick={handleCreateSequence}>Salvar</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           {sequences.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">Nenhuma sequência de email encontrada.</div>
           ) : (
@@ -188,6 +262,23 @@ const AutomationsPage = () => {
 
         {/* REGRAS */}
         <TabsContent value="regras" className="mt-4 space-y-3">
+          <div className="flex justify-end">
+            <Dialog open={ruleOpen} onOpenChange={setRuleOpen}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2"><Plus className="h-4 w-4" /> Nova Regra</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Nova Regra de Automa\u00e7\u00e3o</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div><Label>Nome</Label><Input value={ruleNome} onChange={e => setRuleNome(e.target.value)} placeholder="Ex: Pausar campanha CPA alto" /></div>
+                  <div><Label>Trigger</Label><Input value={ruleTrigger} onChange={e => setRuleTrigger(e.target.value)} placeholder="Ex: cpa_above_threshold" /></div>
+                  <div><Label>Condi\u00e7\u00e3o</Label><Input value={ruleCondition} onChange={e => setRuleCondition(e.target.value)} placeholder="Ex: CPA > R$50" /></div>
+                  <div><Label>A\u00e7\u00e3o</Label><Input value={ruleAction} onChange={e => setRuleAction(e.target.value)} placeholder="Ex: Pausar campanha" /></div>
+                  <Button className="w-full" onClick={handleCreateRule}>Salvar</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           {displayRules.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">Nenhuma regra encontrada.</div>
           ) : (
