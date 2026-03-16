@@ -1,12 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as queries from '@/services/supabase-queries';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function useOrgId() {
-  return queries.getCurrentOrgId();
+  const { currentOrg } = useAuth();
+  return currentOrg?.id ?? null;
 }
 
 // ---------------------------------------------------------------------------
