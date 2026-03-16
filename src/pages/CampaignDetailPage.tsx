@@ -106,7 +106,7 @@ const CampaignDetailPage = () => {
   const campaignName = campaign?.name || "Google - Brand Search";
   const campaignPlatform = campaign?.platform || "Google Ads";
   const campaignStatus = campaign?.status || "active";
-  const statusLabel = campaignStatus === "active" || campaignStatus === "enabled" ? "Ativo" : "Pausado";
+  const statusLabel = campaignStatus === "active" ? "Ativo" : "Pausado";
 
   // Real ad groups from Supabase join, or fallback
   const realAdGroups = campaign?.ad_groups || [];
