@@ -372,7 +372,7 @@ export async function fetchAlerts(orgId: string) {
 export async function updateAlertStatus(id: string, status: string) {
   const { data, error } = await supabase
     .from('alerts')
-    .update({ status })
+    .update({ status } as any)
     .eq('id', id)
     .select()
     .single();
