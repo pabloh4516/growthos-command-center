@@ -308,7 +308,7 @@ export async function fetchAIDecisions(orgId: string) {
 export async function updateAIDecisionStatus(id: string, status: string) {
   const { data, error } = await supabase
     .from('ai_decisions')
-    .update({ status })
+    .update({ status } as any)
     .eq('id', id)
     .select()
     .single();
