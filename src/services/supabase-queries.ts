@@ -105,7 +105,7 @@ export async function fetchUtmifySales(orgId: string, filters?: UtmifySalesFilte
     .order('sale_date', { ascending: false });
 
   if (filters?.status) {
-    query = query.eq('status', filters.status);
+    query = query.eq('status', filters.status as any);
   }
   if (filters?.utm_source) {
     query = query.eq('utm_source', filters.utm_source);
