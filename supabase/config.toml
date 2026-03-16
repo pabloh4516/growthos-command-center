@@ -1,0 +1,7 @@
+project_id = "ndtfmhuuzyzgmpizplhd"
+
+[functions.generate-audiences]
+verify_jwt = false
+
+[functions.create-google-audience]
+verify_jwt = false
