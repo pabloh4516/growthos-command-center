@@ -697,7 +697,7 @@ export async function fetchSEOKeywords(orgId: string) {
 
 export async function fetchSearchTerms(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('search_terms')
     .select('*')
     .eq('organization_id', orgId)
@@ -714,7 +714,7 @@ export async function fetchSearchTerms(orgId: string) {
 
 export async function fetchMetricsByHour(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('metrics_hourly')
     .select('*')
     .eq('organization_id', orgId)
@@ -730,7 +730,7 @@ export async function fetchMetricsByHour(orgId: string) {
 
 export async function fetchMetricsByGeo(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('metrics_geo')
     .select('*')
     .eq('organization_id', orgId)
@@ -746,7 +746,7 @@ export async function fetchMetricsByGeo(orgId: string) {
 
 export async function fetchPlacements(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('placements')
     .select('*')
     .eq('organization_id', orgId)
@@ -762,7 +762,7 @@ export async function fetchPlacements(orgId: string) {
 
 export async function fetchQualityScoreKeywords(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('keywords')
     .select('*')
     .eq('organization_id', orgId)
@@ -778,7 +778,7 @@ export async function fetchQualityScoreKeywords(orgId: string) {
 
 export async function fetchLTVData(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('ltv_by_source')
     .select('*')
     .eq('organization_id', orgId)

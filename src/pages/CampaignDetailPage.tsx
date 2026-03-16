@@ -130,7 +130,7 @@ const CampaignDetailPage = () => {
   const executedOptimizations = mockExecutedOptimizations;
 
   // Compute KPIs from real data if available
-  const totalSpend = campaign?.total_cost || campaign?.cost || 10520;
+  const totalSpend = campaign?.cost || 10520;
   const totalConversions = campaign?.google_conversions || 188;
   const totalSales = campaign?.real_sales_count || 143;
   const roas = campaign?.real_roas || 3.54;
