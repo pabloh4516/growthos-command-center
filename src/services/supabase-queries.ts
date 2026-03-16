@@ -61,7 +61,7 @@ export async function createCampaign(orgId: string, campaign: {
   requireOrg(orgId);
   const { data, error } = await supabase
     .from('campaigns')
-    .insert({ ...campaign, organization_id: orgId })
+    .insert({ ...campaign, organization_id: orgId } as any)
     .select()
     .single();
 
@@ -105,7 +105,7 @@ export async function fetchUtmifySales(orgId: string, filters?: UtmifySalesFilte
     .order('sale_date', { ascending: false });
 
   if (filters?.status) {
-    query = query.eq('status', filters.status);
+    query = query.eq('status', filters.status as any);
   }
   if (filters?.utm_source) {
     query = query.eq('utm_source', filters.utm_source);
@@ -276,7 +276,7 @@ export async function fetchInsights(orgId: string) {
 export async function updateInsightStatus(id: string, status: string) {
   const { data, error } = await supabase
     .from('insights')
-    .update({ status })
+    .update({ status } as any)
     .eq('id', id)
     .select()
     .single();
@@ -308,7 +308,7 @@ export async function fetchAIDecisions(orgId: string) {
 export async function updateAIDecisionStatus(id: string, status: string) {
   const { data, error } = await supabase
     .from('ai_decisions')
-    .update({ status })
+    .update({ status } as any)
     .eq('id', id)
     .select()
     .single();
@@ -372,7 +372,7 @@ export async function fetchAlerts(orgId: string) {
 export async function updateAlertStatus(id: string, status: string) {
   const { data, error } = await supabase
     .from('alerts')
-    .update({ status })
+    .update({ status } as any)
     .eq('id', id)
     .select()
     .single();
@@ -697,7 +697,7 @@ export async function fetchSEOKeywords(orgId: string) {
 
 export async function fetchSearchTerms(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('search_terms')
     .select('*')
     .eq('organization_id', orgId)
@@ -714,7 +714,7 @@ export async function fetchSearchTerms(orgId: string) {
 
 export async function fetchMetricsByHour(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('metrics_hourly')
     .select('*')
     .eq('organization_id', orgId)
@@ -730,7 +730,7 @@ export async function fetchMetricsByHour(orgId: string) {
 
 export async function fetchMetricsByGeo(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('metrics_geo')
     .select('*')
     .eq('organization_id', orgId)
@@ -746,7 +746,7 @@ export async function fetchMetricsByGeo(orgId: string) {
 
 export async function fetchPlacements(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('placements')
     .select('*')
     .eq('organization_id', orgId)
@@ -762,7 +762,7 @@ export async function fetchPlacements(orgId: string) {
 
 export async function fetchQualityScoreKeywords(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('keywords')
     .select('*')
     .eq('organization_id', orgId)
@@ -778,7 +778,7 @@ export async function fetchQualityScoreKeywords(orgId: string) {
 
 export async function fetchLTVData(orgId: string) {
   requireOrg(orgId);
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('ltv_by_source')
     .select('*')
     .eq('organization_id', orgId)
