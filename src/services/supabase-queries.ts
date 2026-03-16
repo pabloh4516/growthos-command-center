@@ -61,7 +61,7 @@ export async function createCampaign(orgId: string, campaign: {
   requireOrg(orgId);
   const { data, error } = await supabase
     .from('campaigns')
-    .insert({ ...campaign, organization_id: orgId })
+    .insert({ ...campaign, organization_id: orgId } as any)
     .select()
     .single();
 
