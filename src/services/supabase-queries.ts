@@ -276,7 +276,7 @@ export async function fetchInsights(orgId: string) {
 export async function updateInsightStatus(id: string, status: string) {
   const { data, error } = await supabase
     .from('insights')
-    .update({ status })
+    .update({ status } as any)
     .eq('id', id)
     .select()
     .single();
